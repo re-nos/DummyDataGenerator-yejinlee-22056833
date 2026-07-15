@@ -1,0 +1,22 @@
+[project]
+name = "dummy-data-generator"
+version = "0.1.0"
+description = "S-Semi 시료 생산주문관리 시스템을 위한 테스트용 Dummy 데이터 생성 도구"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+dummy-data-gen = "dummy_data_generator.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
