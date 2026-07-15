@@ -6,10 +6,17 @@
 
 from __future__ import annotations
 
+import math
 import random
 from datetime import datetime, timedelta
 
-from dummy_data_generator.models import InventoryRecord, Order, OrderStatus, Sample
+from dummy_data_generator.models import (
+    InventoryRecord,
+    Order,
+    OrderStatus,
+    ProductionQueueEntry,
+    Sample,
+)
 
 _SAMPLE_NAME_PREFIXES = ["Wafer", "Die", "Chip", "Module", "Sensor"]
 _SAMPLE_NAME_SUFFIXES = ["A", "B", "C", "X", "Pro", "Lite"]
@@ -105,3 +112,42 @@ def generate_inventory(
         )
         for sample in samples
     ]
+
+
+def generate_production_queue(
+    orders: list[Order], samples: list[Sample], *, seed: int | None = None
+) -> list[ProductionQueueEntry]:
+    """PRODUCING 상태 주문에 대해 FIFO 생산 큐 더미 데이터를 생성한다.
+
+    PRD의 생산량 계산 로직을 따른다:
+    실 생산량 = ceil(부족분 / 수율), 총 생산 시간 = 평균 생산시간 * 실 생산량
+    """
+    sample_by_id = {sample.sample_id: sample for sample in samples}
+    rng = random.Random(seed)
+
+    producing_orders = sorted(
+        (order for order in orders if order.status is OrderStatus.PRODUCING),
+        key=lambda order: order.created_at,
+    )
+
+    entries = []
+    for position, order in enumerate(producing_orders):
+        sample = sample_by_id.get(order.sample_id)
+        if sample is None:
+            raise ValueError(f"알 수 없는 sample_id: {order.sample_id}")
+
+        shortage = rng.randint(1, order.quantity)
+        actual_quantity = math.ceil(shortage / sample.yield_rate)
+        entries.append(
+            ProductionQueueEntry(
+                order_id=order.order_id,
+                sample_id=order.sample_id,
+                shortage=shortage,
+                actual_quantity=actual_quantity,
+                total_production_time=round(
+                    sample.avg_production_time * actual_quantity, 1
+                ),
+                queue_position=position,
+            )
+        )
+    return entries
